@@ -76,6 +76,7 @@ class ShopScene: SKScene, ItemSpriteDelegate
         loadDecorItems()
         loadBackgroundItems()
         loadFurnitureItems()
+        loadIngredientItems()
         
         // furniture is the first page to pop up
         loadItemsForCurrentPage(type: "furniture")
@@ -395,6 +396,26 @@ class ShopScene: SKScene, ItemSpriteDelegate
 
     }
     
+    /**
+     This function loads the ingredients available for purchase.
+     */
+    func loadIngredientItems()
+    {
+        // load inventory for comparison
+        currentInventory = UserDataManager.shared.loadInventory()
+        
+        // load the items in
+        let ingredient1 = Item(itemID: "22", imageName: "Drinks/Ingredients/luckyclover", price: 5, type: "ingredient", isOwned: false, isEquipped: false)
+        let ingredient2 = Item(itemID: "23", imageName: "Drinks/Ingredients/orange", price: 5, type: "ingredient", isOwned: false, isEquipped: false)
+        let ingredient3 = Item(itemID: "24", imageName: "Drinks/Ingredients/rainbows", price: 5, type: "ingredient", isOwned: false, isEquipped: false)
+        let ingredient4 = Item(itemID: "25", imageName: "Drinks/Ingredients/sugarcookie", price: 5, type: "ingredient", isOwned: false, isEquipped: false)
+
+        let ingredientCatalog = [ingredient1, ingredient2, ingredient3, ingredient4]
+        
+        ingredientItems.append(contentsOf: ingredientCatalog)
+        
+    }
+    
     
     func handleItemTouch(_ touchedItem: Item)
     {
@@ -461,7 +482,7 @@ class ShopScene: SKScene, ItemSpriteDelegate
                     label.text = "Equipped"
                 }
                 
-                // unequip the other item
+            // unequip the other item //TODO: IF ITEM IS NOT AN INGREDIENT
             if let currentInventory
             {
                 for i in 0..<currentInventory.count
@@ -776,6 +797,75 @@ class ShopScene: SKScene, ItemSpriteDelegate
                 
                 pointIndex += 1
             }
+        case "ingredient":
+            let startIndex = currentPage * itemsPerPage
+            let endIndex = min(startIndex + itemsPerPage, ingredientItems.count)
+            
+            if currentInventory != nil
+            {
+                let currentInventorySet = Set(currentInventory) // load the user's inventory into a set
+                let equippedItemsSet = Set(currentInventory.filter( { $0.getIsEquipped() })) // load the user's equipped items into a set
+                
+                // change the status for owned items
+                for ingredient in ingredientItems
+                {
+                    if currentInventorySet.contains(ingredient)
+                    {
+                        ingredient.setIsOwned(itemOwned: true)
+                    }
+                }
+                
+                // change the status for equipped items
+                for ingredient in ingredientItems
+                {
+                    if equippedItemsSet.contains(ingredient)
+                    {
+                        ingredient.setIsEquipped(itemEquipped: true)
+                    }
+                }
+            }
+
+            for index in startIndex..<endIndex
+            {
+                // reset the point index
+                if startIndex % 8 > 0
+                {
+                    pointIndex = 0
+                }
+                
+                let item = ingredientItems[index]
+                let itemSprite = ItemSprite(itemToCreate: item)
+                itemSprite.delegate = self
+                itemSprite.position = points[pointIndex]
+                itemSprite.zPosition = 5
+                itemSprite.isUserInteractionEnabled = true
+                addChild(itemSprite)
+
+                var labelText = ""
+                
+                if ingredientItems[index].getIsOwned() == true && ingredientItems[index].getIsEquipped() == true
+                {
+                    labelText = "Equipped"
+                }
+                else if ingredientItems[index].getIsOwned() == true && ingredientItems[index].getIsEquipped() == false
+                {
+                    labelText = "Owned"
+                }
+                else if ingredientItems[index].getIsOwned() == false
+                {
+                    labelText = String(ingredientItems[index].getPrice())
+                }
+                
+                let itemSpriteLabel = SKLabelNode(text: labelText)
+                itemSpriteLabel.position = labelPoints[pointIndex]
+                itemSpriteLabel.zPosition = 5
+                itemSpriteLabel.isUserInteractionEnabled = true
+                itemSpriteLabel.name = "\(ingredientItems[index].getItemID())_label"
+                itemLabelsDict[ingredientItems[index].getItemID()] = itemSpriteLabel
+                addChild(itemSpriteLabel)
+                
+                pointIndex += 1
+            }
         default:
             print("Error loading items.")
         }
@@ -878,7 +968,10 @@ class ShopScene: SKScene, ItemSpriteDelegate
             
             if node.name == "ingredient"
             {
+                removeAllItemSprites()
+                removeAllLabelSprites()
                 highlightTab(Category: "ingredient")
+                loadItemsForCurrentPage(type: "ingredient")
                 print("ingredient!")
             }
             
